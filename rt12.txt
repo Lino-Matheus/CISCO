@@ -1,0 +1,53 @@
+!==== HOST ====
+hostname RT12
+ip domain-name vivo.br
+crypto key generate rsa general-keys modulus 1024
+
+banner motd *
+########################################
+#                                      #
+#               Router 12              #
+#                                      #
+########################################
+*
+
+!==== SENHAS ====
+enable password 7 060506324F41
+username admin privilege 15 password 7 060506324F41
+line console 0
+password 7 060506324F41
+login
+line aux 0
+password 7 060506324F41
+login
+line vty 0 15
+transport input ssh
+login local
+exit
+service password-encryption
+
+!==== INTERFACES ====
+interface gig 0/0
+desc "To RT11"
+ip address 200.100.100.6 255.255.255.252
+no shut
+
+interface gig 0/1
+desc "To RT13"
+ip address 150.100.100.6 255.255.255.252
+no shut
+
+interface gig 0/2
+desc "To Google"
+ip address 8.8.8.1 255.255.255.240
+no shut
+
+!==== ROTEAMENTO ====
+router bgp 65002
+bgp router-id 12.1.1.1
+network 200.100.100.4 mask 255.255.255.252
+network 150.100.100.4 mask 255.255.255.252
+network 8.8.8.0 mask 255.255.255.240
+neighbor 200.100.100.5 remote-as 65001
+neighbor 150.100.100.5 remote-as 65003
+exit

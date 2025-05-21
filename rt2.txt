@@ -1,0 +1,128 @@
+!==== HOST ====
+hostname RT2
+ip domain-name redes.br
+crypto key generate rsa general-keys modulus 1024
+
+banner motd *
+########################################
+#                                      #
+#               Router 2               #
+#                                      #
+########################################
+*
+
+!==== SENHAS ====
+enable password 7 060506324F41
+username admin privilege 15 password 7 060506324F41
+line console 0
+password 7 060506324F41
+login
+line aux 0
+password 7 060506324F41
+login
+line vty 0 15
+transport input ssh
+login local
+exit
+service password-encryption
+
+!==== INTERFACES ====
+ipv6 unicast-routing
+ip name-server 8.8.8.8
+
+interface gig 0/0/0
+shutdown
+
+interface gig 0/0/1
+desc "Link Internet"
+ip address 200.200.200.6 255.255.255.252
+ip nat outside
+no shutdown
+
+interface gig 0/0/2
+no shutdown
+desc "LAN"
+
+interface gig 0/0/2.99
+desc "Acesso remoto"
+encapsulation dot1q 99 native
+ip address 192.168.99.2 255.255.255.0
+
+interface gig 0/0/2.100
+desc "Acesso remoto"
+encapsulation dot1q 100
+ip address 192.168.100.2 255.255.255.0
+standby 100 ip 192.168.100.254
+standby 100 priority 105
+standby 100 preempt
+standby version 2
+no shutdown
+
+interface gig 0/0/2.200
+desc "Rede IPv4"
+encapsulation dot1q 200
+ip address 192.168.0.2 255.255.255.0
+ip nat inside
+standby 200 ip 192.168.0.254
+standby 200 priority 105
+standby 200 track gig 0/0/1
+standby 200 preempt
+standby version 2
+no shutdown
+
+interface gig 0/0/2.210
+desc "Rede IPv6"
+ipv6 enable
+encapsulation dot1q 210
+ipv6 address 2001:db8:cafe:1::2/64
+ipv6 address fe80::2 link-local
+standby 210 ipv6 autoconfig
+standby 210 preempt
+standby 210 priority 105
+standby 210 track gig0/0
+standby version 2
+no shutdown
+exit
+
+!==== ACL / ROUTING ====
+ip route 0.0.0.0 0.0.0.0 200.200.200.5
+
+router ospf 10
+router-id 2.2.2.2
+network 192.168.100.0 0.0.0.255 area 0
+network 192.168.0.0 0.0.0.255 area 0
+passive-interface gig 0/0/1
+
+ip access-list extended PAT
+deny ip 192.168.0.0 0.0.255.255 172.16.0.0 0.15.255.255
+permit ip 192.168.0.0 0.0.255.255 any
+exit
+
+ip access-list extended VPN
+permit ip 192.168.0.0 0.0.255.255 172.16.0.0 0.15.255.255
+exit
+
+ip nat inside source list PAT interface gig 0/0/1 overload
+
+!==== VPN ====
+crypto isakmp policy 100
+authentication pre-share
+encryption aes 256
+hash sha
+group 5
+exit
+
+crypto isakmp key senai-key address 100.100.100.2
+
+crypto ipsec transform-set senai-transform esp-aes 256 esp-sha-hmac
+
+crypto map senai-map 1 ipsec-isakmp
+set transform-set senai-transform
+set peer 100.100.100.2
+match address VPN
+set pfs group5
+exit
+
+interface gig 0/0/1
+crypto map senai-map
+exit

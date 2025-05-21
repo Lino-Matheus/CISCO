@@ -1,0 +1,54 @@
+!==== HOST ====
+hostname RT13
+ip domain-name vivo.br
+crypto key generate rsa general-keys modulus 1024
+
+banner motd *
+########################################
+#                                      #
+#               Router 13              #
+#                                      #
+########################################
+*
+
+!==== SENHAS ====
+enable password 7 060506324F41
+username admin privilege 15 password 7 060506324F41
+line console 0
+password 7 060506324F41
+login
+line aux 0
+password 7 060506324F41
+login
+line vty 0 15
+transport input ssh
+login local
+exit
+service password-encryption
+
+!==== INTERFACES ====
+interface gig 0/0
+desc "To RT14"
+ip address 150.100.100.2 255.255.255.252
+no shut
+
+interface gig 0/1
+desc "To RT12"
+ip address 150.100.100.5 255.255.255.252
+no shut
+
+interface gig 0/2
+desc "To RT15"
+ip address 150.100.100.9 255.255.255.252
+no shut
+
+!==== ROTEAMENTO ====
+router bgp 65003
+bgp router-id 13.1.1.1
+network 150.100.100.4 mask 255.255.255.252
+network 150.100.100.8 mask 255.255.255.252
+network 150.100.100.0 mask 255.255.255.252
+neighbor 150.100.100.6 remote-as 65002
+neighbor 150.100.100.1 remote-as 65004
+neighbor 150.100.100.10 remote-as 65005
+exit

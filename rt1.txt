@@ -1,0 +1,97 @@
+!==== HOST ====
+hostname RT1
+ip domain-name redes.br
+crypto key generate rsa general-keys modulus 1024
+
+banner motd *
+########################################
+#                                      #
+#               Router 1               #
+#                                      #
+########################################
+*
+
+!==== SENHAS ====
+enable password senai123
+username admin privilege 15 password senai123
+line console 0
+password senai123
+login
+line aux 0
+password senai123
+login
+line vty 0 15
+transport input ssh
+login local
+exit
+service password-encryption
+
+!==== INTERFACES ====
+ipv6 unicast-routing
+ip name-server 8.8.8.8
+
+interface gig 0/0
+desc "Link Internet"
+ip address 200.200.200.2 255.255.255.252
+ip nat outside
+no shutdown
+
+interface gig 0/1
+no shutdown
+desc "LAN"
+
+interface gig 0/1.99
+desc "Acesso remoto"
+encapsulation dot1q 99 native
+ip address 192.168.99.1 255.255.255.0
+
+interface gig 0/1.100
+desc "Acesso remoto"
+encapsulation dot1q 100
+ip address 192.168.100.1 255.255.255.0
+standby 100 ip 192.168.100.254
+standby 100 priority 100
+standby 100 preempt
+standby version 2
+no shutdown
+
+interface gig 0/1.200
+desc "Rede IPv4"
+encapsulation dot1q 200
+ip address 192.168.0.1 255.255.255.0
+ip nat inside
+standby 200 ip 192.168.0.254
+standby 200 priority 100
+standby 200 track gig 0/0
+standby 200 preempt
+standby version 2
+no shutdown
+
+interface gig 0/1.210
+desc "Rede IPv6"
+encapsulation dot1q 210
+ipv6 enable
+ipv6 address 2001:db8:cafe:1::1/64
+ipv6 address fe80::1 link-local
+standby 210 ipv6 autoconfig
+standby 210 preempt
+standby 210 priority 100
+standby 210 track gig0/0
+standby version 2
+no shutdown
+exit
+
+!==== ACL / ROUTING ====
+ip route 0.0.0.0 0.0.0.0 200.200.200.1
+
+router ospf 10
+router-id 1.1.1.1
+network 192.168.100.0 0.0.0.255 area 0
+network 192.168.0.0 0.0.0.255 area 0
+passive-interface gig 0/0
+
+ip access-list standard PAT
+permit 192.168.0.0 0.0.255.255
+exit
+
+ip nat inside source list PAT interface gig 0/0 overload

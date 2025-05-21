@@ -1,0 +1,64 @@
+!==== HOST ====
+hostname SW21
+ip domain-name senai.br
+crypto key generate rsa general-keys modulus 1024
+
+banner motd *
+########################################
+#                                      #
+#               Switch 21              #
+#                                      #
+########################################
+*
+
+!==== SENHAS ====
+enable password senai123
+username admin privilege 15 password senai123
+line console 0
+password senai123
+login
+line aux 0
+password senai123
+login
+line vty 0 15
+transport input ssh
+login local
+exit
+service password-encryption
+
+!==== VLANs / IPs ====
+ip name-server 8.8.8.8
+ip default-gateway 172.17.0.1
+ip dhcp snooping
+spanning-tree mode rapid-pvst
+
+int vlan 1
+desc "Acesso remoto"
+ip address 172.17.0.5 255.255.255.0
+no shutdown
+exit
+
+!==== INTERFACES ====
+interface fast 0/1
+desc "PCs"
+switchport mode access
+switchport access vlan 1
+switchport port-security maximum 3
+switchport port-security violation restrict
+spanning portfast
+spanning bpduguard enable
+ip dhcp snooping limit rate 5
+
+interface range fast 0/2-24
+switchport mode access
+shutdown
+
+interface gig 0/1
+switchport mode access
+switchport access vlan 1
+switchport nonegotiate
+ip dhcp snooping trust
+
+interface gig 0/2
+switchport mode access
+shutdown

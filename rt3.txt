@@ -1,0 +1,96 @@
+!==== HOST ====
+hostname RT3
+ip domain-name redes.br
+crypto key generate rsa general-keys modulus 1024
+
+banner motd *
+########################################
+#                                      #
+#               Router 3               #
+#                                      #
+########################################
+*
+
+!==== SENHAS ====
+enable password 7 060506324F41
+username admin privilege 15 password 7 060506324F41
+line console 0
+password 7 060506324F41
+login
+line aux 0
+password 7 060506324F41
+login
+line vty 0 15
+transport input ssh
+login local
+exit
+service password-encryption
+
+!==== INTERFACES ====
+ip name-server 8.8.8.8
+
+interface gig 0/0/0
+desc "To SW21"
+ip address 172.17.0.1 255.255.255.0
+ip nat inside
+no shut
+
+interface gig 0/0/1
+desc "To Internet"
+ip address 100.100.100.2 255.255.255.252
+ip nat outside
+no shut
+
+!==== GRE / NAT ====
+
+ip access-list extended PAT
+deny ip 172.16.0.0 0.15.255.255 192.168.0.0 0.0.255.255
+permit ip 172.16.0.0 0.15.255.255 any
+exit
+
+ip nat inside source list PAT interface gig 0/0/1 overload
+
+ip access-list extended VPN
+permit ip 172.16.0.0 0.15.255.255 192.168.0.0 0.0.255.255
+exit
+
+interface tunnel 1
+tunnel mode gre ip
+tunnel source gig 0/0/1
+tunnel destination 100.100.100.6
+ip address 172.17.10.1 255.255.255.252
+exit
+
+!==== ROTEAMENTO ====
+ip route 0.0.0.0 0.0.0.0 100.100.100.1
+
+router ospf 10
+router-id 3.3.3.3
+network 172.17.0.0 0.0.0.255 area 100
+network 172.17.10.0 0.0.0.255 area 0
+passive-interface gig 0/0/1
+passive-interface gig 0/0/0
+exit
+
+!==== VPN ====
+crypto isakmp policy 100
+authentication pre-share
+encryption aes 256
+hash sha
+group 5
+exit
+
+crypto isakmp key senai-key address 200.200.200.6
+
+crypto ipsec transform-set senai-transform esp-aes esp-sha-hmac
+
+crypto map senai-map 1 ipsec-isakmp
+set transform-set senai-transform
+set peer 200.200.200.6
+match address VPN
+set pfs group5
+exit
+
+interface gig 0/0/1
+crypto map senai-map
+exit

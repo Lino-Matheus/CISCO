@@ -1,0 +1,124 @@
+!==== HOST ====
+hostname RT4
+ip domain-name redes.br
+crypto key generate rsa general-keys modulus 1024
+
+banner motd *
+########################################
+#                                      #
+#               Router 4               #
+#                                      #
+########################################
+*
+
+!==== SENHAS ====
+enable password 7 060506324F41
+username admin privilege 15 password 7 060506324F41
+line console 0
+password 7 060506324F41
+login
+line aux 0
+password 7 060506324F41
+login
+line vty 0 15
+transport input ssh
+login local
+exit
+service password-encryption
+
+!==== INTERFACES ====
+ip name-server 8.8.8.8
+
+interface gig 0/0
+desc "To SW22"
+ip address 172.16.0.1 255.255.255.0
+ip nat inside
+no shut
+
+interface gig 0/1
+desc "To VLANs"
+no shut
+
+interface gig 0/1.10
+desc "VLAN 10"
+encapsulation dot1q 10
+ip address 172.30.10.1 255.255.255.0
+ip helper-address 172.30.10.5
+ip nat inside
+no shut
+
+interface gig 0/1.20
+desc "VLAN 20"
+encapsulation dot1q 20
+ip address 172.30.20.1 255.255.255.0
+ip helper-address 172.30.10.5
+ip nat inside
+no shut
+
+interface gig 0/1.30
+desc "VLAN 30"
+encapsulation dot1q 30
+ip address 172.30.30.1 255.255.255.0
+ip helper-address 172.30.10.5
+ip nat inside
+no shut
+
+interface gig 0/1.40
+desc "VLAN 40"
+encapsulation dot1q 40
+ip address 172.30.40.1 255.255.255.0
+ip helper-address 172.30.10.5
+ip nat inside
+no shut
+
+interface gig 0/1.99
+desc "VLAN Nativa"
+encapsulation dot1q 99 native
+ip address 172.30.99.1 255.255.255.0
+no shut
+
+interface gig 0/1.100
+desc "Management"
+encapsulation dot1q 100
+ip address 172.30.100.1 255.255.255.0
+no shut
+
+interface gig 0/2
+desc "To Internet"
+ip address 100.100.100.6 255.255.255.252
+ip nat outside
+no shut
+
+!==== GRE / NAT ====
+ip access-list standard PAT
+permit 172.16.0.0 0.0.0.255
+permit 172.30.10.0 0.0.0.255
+permit 172.30.20.0 0.0.0.255
+permit 172.30.30.0 0.0.0.255
+permit 172.30.40.0 0.0.0.255
+exit
+
+ip nat inside source list PAT interface gig 0/2 overload
+
+interface tunnel 1
+tunnel mode gre ip
+tunnel source gig 0/2
+tunnel destination 100.100.100.2
+ip address 172.17.10.2 255.255.255.252
+exit
+
+!==== ROTEAMENTO ====
+ip route 0.0.0.0 0.0.0.0 100.100.100.5
+
+router ospf 10
+router-id 4.4.4.4
+network 172.16.0.0 0.0.0.255 area 100
+network 172.17.10.0 0.0.0.255 area 0
+network 172.30.10.0 0.0.0.255 area 100
+network 172.30.20.0 0.0.0.255 area 100
+network 172.30.30.0 0.0.0.255 area 100
+network 172.30.40.0 0.0.0.255 area 100
+network 172.30.100.0 0.0.0.255 area 100
+passive-interface gig 0/2
+passive-interface gig 0/0
+exit

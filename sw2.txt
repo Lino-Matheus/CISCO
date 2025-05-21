@@ -1,0 +1,79 @@
+!==== HOST ====
+hostname SW2
+ip domain-name redes.br
+crypto key generate rsa general-keys modulus 1024
+
+banner motd *
+########################################
+#                                      #
+#               Switch 2               #
+#                                      #
+########################################
+*
+
+!==== SENHAS ====
+enable password senai123
+username admin privilege 15 password senai123
+line console 0
+password senai123
+login
+line aux 0
+password senai123
+login
+line vty 0 15
+transport input ssh
+login local
+exit
+service password-encryption
+
+!==== VLANs / IPs ====
+ip name-server 8.8.8.8
+ip default-gateway 192.168.100.254
+spanning-tree mode rapid-pvst
+
+vtp mode client
+vtp domain redes.br
+vtp password redes
+
+int vlan 100
+desc "Acesso remoto"
+ip address 192.168.100.6 255.255.255.0
+no shutdown
+exit
+
+spanning vlan 99,210 priority 8192
+spanning vlan 100,200 priority 4096
+
+!==== INTERFACES ====
+interface range fast 0/1-4
+switchport mode access
+shutdown
+
+interface range fast 0/5-7
+desc "EtherChannel"
+channel-group 1 mode active
+
+interface port-channel 1
+switchport mode trunk
+switchport trunk allowed vlan 10-1000
+switchport trunk native vlan 99
+
+interface range fast 0/8-24
+switchport mode access
+shutdown
+
+interface gig 0/1
+desc "PCs"
+switchport mode access
+switchport access vlan 200
+switchport port-security maximum 3
+switchport port-security violation restrict
+spanning portfast
+spanning bpduguard enable
+
+interface gig 0/2
+desc "To RT2"
+switchport mode trunk
+switchport trunk allowed vlan 10-1000
+switchport trunk native vlan 99
+switchport nonegotiate

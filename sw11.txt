@@ -1,0 +1,90 @@
+!==== HOST ====
+hostname SW11
+ip domain-name senai.br
+crypto key generate rsa general-keys modulus 1024
+
+banner motd *
+########################################
+#                                      #
+#               Switch 11              #
+#                                      #
+########################################
+*
+
+!==== SENHAS ====
+enable password senai123
+username admin privilege 15 password senai123
+line console 0
+password senai123
+login
+line aux 0
+password senai123
+login
+line vty 0 15
+transport input ssh
+login local
+exit
+service password-encryption
+
+!==== VLANs / IPs ====
+ip name-server 8.8.8.8
+ip default-gateway 172.30.100.1
+spanning-tree mode rapid-pvst
+
+vtp mode client
+vtp domain senai.br
+vtp password senai
+
+int vlan 100
+desc "Acesso remoto"
+ip address 172.30.100.5 255.255.255.0
+no shutdown
+exit
+
+spanning vlan 10,20 priority 4096
+spanning vlan 30,40,100 priority 8192
+
+!==== INTERFACES ====
+interface range fast 0/1-3
+desc "EtherChannel"
+channel-group 1 mode active
+
+interface port-channel 1
+switchport mode trunk
+switchport trunk allowed vlan 10-100
+switchport trunk native vlan 99
+
+interface fast 0/4
+desc "PCs"
+switchport mode access
+switchport access vlan 10
+switchport port-security maximum 3
+switchport port-security violation restrict
+spanning portfast
+spanning bpduguard enable
+
+interface fast 0/5
+desc "PCs"
+switchport mode access
+switchport access vlan 20
+switchport port-security maximum 3
+switchport port-security violation restrict
+spanning portfast
+spanning bpduguard enable
+
+interface range fast 0/6-24
+switchport mode access
+shutdown
+
+interface gig 0/1
+desc "DHCP"
+switchport mode access
+switchport access vlan 10
+switchport port-security maximum 3
+switchport port-security violation restrict
+spanning portfast
+spanning bpduguard enable
+
+interface gig 0/2
+switchport mode access
+shutdown
